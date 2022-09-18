@@ -6,18 +6,26 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Gregory Mironov");
 MODULE_VERSION("1.0.0");
 
-// Wrapper for usb_device_id with added list_head field to track devices.
-typedef struct int_udev
-{
-    struct usb_device_id dev_id;
-    struct list_head list_node;
-} int_udev_t;
+static char *net_modules[16] = {"iwlwifi"};
+static int net_modules_n = 1;
+module_param_array(net_modules, charp, &net_modules_n, S_IRUGO);
+MODULE_PARM_DESC(net_modules, "List of modules to manipulate with");
+
+static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
 
 static bool is_network_down = false;
 
 static struct usb_device_id allowed_devs[] = {
     {USB_DEVICE(0x0781, 0x5571)},
 };
+
+// Wrapper for usb_device_id with added list_head field to track devices.
+typedef struct int_usb_device
+{
+    struct usb_device_id dev_id;
+    struct list_head list_node;
+} int_usb_device_t;
+
 
 // Declare and init the head node of the linked list.
 LIST_HEAD(connected_devices);
@@ -60,7 +68,7 @@ count_not_acked_devs(void)
 {
     int count = 0;
 
-    int_udev_t *temp;
+    int_usb_device_t *temp;
     list_for_each_entry(temp, &connected_devices, list_node)
         if (!is_dev_allowed(&temp->dev_id))
             count++;
@@ -72,7 +80,7 @@ count_not_acked_devs(void)
 static void
 add_int_usb_dev(const struct usb_device * const dev)
 {
-    int_udev_t *new_usb_device = (int_udev_t *)kmalloc(sizeof(int_udev_t), GFP_KERNEL);
+    int_usb_device_t *new_usb_device = (int_usb_device_t *)kmalloc(sizeof(int_usb_device_t), GFP_KERNEL);
     struct usb_device_id new_id = {
         USB_DEVICE(dev->descriptor.idVendor, dev->descriptor.idProduct),
     };
@@ -85,7 +93,7 @@ add_int_usb_dev(const struct usb_device * const dev)
 static void
 delete_int_usb_dev(const struct usb_device * const dev)
 {
-    int_udev_t *device, *temp;
+    int_usb_device_t *device, *temp;
     list_for_each_entry_safe(device, temp, &connected_devices, list_node)
         if (is_dev_matched(dev, &device->dev_id))
         {
@@ -113,16 +121,19 @@ usb_dev_insert(const struct usb_device * const dev)
     if (is_network_down)
         return;
 
-    char *argv[] = {"/sbin/modprobe", "-r", "iwlwifi", NULL};
-    char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+    int i = 0;
+    for (; i < net_modules_n; i++)
     {
-        pr_warn("netpmod: unable to kill network\n");
-    }
-    else
-    {
-        pr_info("netpmod: network is killed\n");
-        is_network_down = true;
+        char *argv[] = {"/sbin/modprobe", "-r", net_modules[i], NULL};
+        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+        {
+            pr_warn("netpmod: unable to kill network\n");
+        }
+        else
+        {
+            pr_info("netpmod: network is killed\n");
+            is_network_down = true;
+        }
     }
 }
 
@@ -145,16 +156,20 @@ usb_dev_remove(const struct usb_device * const dev)
         return;
 
     pr_info("netpmod: all not allowed devices are disconnected, bringing network back\n");
-    char *argv[] = {"/sbin/modprobe", "iwlwifi", NULL};
-    char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+
+    int i = 0;
+    for (; i < net_modules_n; i++)
     {
-        pr_warn("netpmod: unable to bring network back\n");
-    }
-    else
-    {
-        pr_info("netpmod: network is available now\n");
-        is_network_down = false;
+        char *argv[] = {"/sbin/modprobe", net_modules[i], NULL};
+        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+        {
+            pr_warn("netpmod: unable to bring network back\n");
+        }
+        else
+        {
+            pr_info("netpmod: network is available now\n");
+            is_network_down = false;
+        }
     }
 }
 
