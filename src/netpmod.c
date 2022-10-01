@@ -1,19 +1,30 @@
 #include <linux/module.h>
 #include <linux/usb.h>
+#include <linux/keyboard.h>
 #include <linux/slab.h> // for kmalloc, kfree
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Gregory Mironov");
 MODULE_VERSION("1.0.0");
 
+// params ----------------------------------------------------------------------
+
 static char *net_modules[16] = {"iwlwifi"};
 static int net_modules_n = 1;
 module_param_array(net_modules, charp, &net_modules_n, S_IRUGO);
 MODULE_PARM_DESC(net_modules, "List of modules to manipulate with");
 
-static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
+static char *password = {"qwery"};
+module_param(password, charp, 0000);
+MODULE_PARM_DESC(password, "Password to reenable network manually");
+
+// params ^---------------------------------------------------------------------
 
 static bool is_network_down = false;
+
+// usb handler -----------------------------------------------------------------
+
+static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
 
 static struct usb_device_id allowed_devs[] = {
     {USB_DEVICE(0x0781, 0x5571)},
@@ -175,7 +186,7 @@ usb_dev_remove(const struct usb_device * const dev)
 
 // Handler for event's notifier.
 static int
-notify(struct notifier_block *self, unsigned long action, void *dev)
+usb_notifier_call(struct notifier_block *self, unsigned long action, void *dev)
 {
     // Events, which our notifier react.
     switch (action)
@@ -190,20 +201,38 @@ notify(struct notifier_block *self, unsigned long action, void *dev)
         break;
     }
 
-    return 0;
+    return NOTIFY_OK;
 }
 
 // React on different notifies.
 static struct notifier_block usb_notify = {
-    .notifier_call = notify,
+    .notifier_call = usb_notifier_call,
 };
+
+// usb handler ^----------------------------------------------------------------
+
+// keyboard handler ------------------------------------------------------------
+
+int kbd_notifier_call(struct notifier_block *nblock, unsigned long code, void *_param)
+{
+    return NOTIFY_OK;
+}
+
+static struct notifier_block kbd_notify = {
+    .notifier_call = kbd_notifier_call,
+};
+
+// keyboard handler ^-----------------------------------------------------------
 
 // Module init function.
 static int
 __init netpmod_init(void)
 {
     usb_register_notify(&usb_notify);
+    register_keyboard_notifier(&kbd_notify);
+
     pr_info("netpmod: module loaded\n");
+
     return 0;
 }
 
@@ -211,7 +240,9 @@ __init netpmod_init(void)
 static void
 __exit netpmod_exit(void)
 {
+    unregister_keyboard_notifier(&kbd_notify);
     usb_unregister_notify(&usb_notify);
+
     pr_info("netpmod: module unloaded\n");
 }
 
