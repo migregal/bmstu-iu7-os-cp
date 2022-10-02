@@ -20,14 +20,54 @@ MODULE_PARM_DESC(password, "Password to reenable network manually");
 
 // params ^---------------------------------------------------------------------
 
-static bool is_network_down = false;
+// network ---------------------------------------------------------------------
 
-// usb handler -----------------------------------------------------------------
+static bool is_network_down = false;
 
 static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
 
+static void
+disable_network(void)
+{
+    int i = 0;
+    for (; i < net_modules_n; i++)
+    {
+        char *argv[] = {"/sbin/modprobe", "-r", net_modules[i], NULL};
+        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+        {
+            pr_warn("netpmod: unable to kill network\n");
+        }
+        else
+        {
+            pr_info("netpmod: network is killed\n");
+            is_network_down = true;
+        }
+    }
+}
+
+static void
+enable_network(void)
+{
+    int i = 0;
+    for (; i < net_modules_n; i++)
+    {
+        char *argv[] = {"/sbin/modprobe", net_modules[i], NULL};
+        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
+        {
+            pr_warn("netpmod: unable to bring network back\n");
+        }
+        else
+        {
+            pr_info("netpmod: network is available now\n");
+            is_network_down = false;
+        }
+    }
+}
+
+// usb handler -----------------------------------------------------------------
+
 static struct usb_device_id allowed_devs[] = {
-    {USB_DEVICE(0x0781, 0x5571)},
+    // {USB_DEVICE(0x0781, 0x5571)},
 };
 
 // Wrapper for usb_device_id with added list_head field to track devices.
@@ -132,20 +172,7 @@ usb_dev_insert(const struct usb_device * const dev)
     if (is_network_down)
         return;
 
-    int i = 0;
-    for (; i < net_modules_n; i++)
-    {
-        char *argv[] = {"/sbin/modprobe", "-r", net_modules[i], NULL};
-        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-        {
-            pr_warn("netpmod: unable to kill network\n");
-        }
-        else
-        {
-            pr_info("netpmod: network is killed\n");
-            is_network_down = true;
-        }
-    }
+    disable_network();
 }
 
 // Handler for USB removal.
@@ -156,6 +183,9 @@ usb_dev_remove(const struct usb_device * const dev)
            dev->descriptor.idProduct, dev->descriptor.idVendor);
     delete_int_usb_dev(dev);
 
+    if (!is_network_down)
+        return;
+
     int not_acked_devs = count_not_acked_devs();
     if (not_acked_devs)
     {
@@ -163,25 +193,9 @@ usb_dev_remove(const struct usb_device * const dev)
         return;
     }
 
-    if (!is_network_down)
-        return;
-
     pr_info("netpmod: all not allowed devices are disconnected, bringing network back\n");
 
-    int i = 0;
-    for (; i < net_modules_n; i++)
-    {
-        char *argv[] = {"/sbin/modprobe", net_modules[i], NULL};
-        if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-        {
-            pr_warn("netpmod: unable to bring network back\n");
-        }
-        else
-        {
-            pr_info("netpmod: network is available now\n");
-            is_network_down = false;
-        }
-    }
+    enable_network();
 }
 
 // Handler for event's notifier.
@@ -213,8 +227,40 @@ static struct notifier_block usb_notify = {
 
 // keyboard handler ------------------------------------------------------------
 
+static size_t matched_password_len = 0;
+static size_t password_len = 0;
+
 int kbd_notifier_call(struct notifier_block *nblock, unsigned long code, void *_param)
 {
+    if (!is_network_down)
+        return NOTIFY_OK;
+
+    struct keyboard_notifier_param *param = _param;
+    if (code != KBD_KEYSYM || !param->down)
+        return NOTIFY_OK;
+
+    char c = param->value;
+    // printable ASCII range is between ' ' (0x20) and '~' (0x7e)
+    if (c < ' ' && c > 0x7e)
+        return NOTIFY_OK;
+
+    if (!password_len)
+        password_len = strlen(password);
+
+    if (!password_len)
+        return NOTIFY_OK;
+
+    if (c == password[matched_password_len])
+        matched_password_len++;
+
+    if (matched_password_len == password_len)
+    {
+        pr_info("netpmod: password matched, bringing network back\n");
+
+        matched_password_len = 0;
+        enable_network();
+    }
+
     return NOTIFY_OK;
 }
 
