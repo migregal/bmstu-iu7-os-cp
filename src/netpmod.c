@@ -20,6 +20,49 @@ MODULE_PARM_DESC(password, "Password to reenable network manually");
 
 // params ^---------------------------------------------------------------------
 
+// init ------------------------------------------------------------------------
+
+static int
+usb_notifier_call(struct notifier_block *self, unsigned long action, void *dev);
+
+static struct notifier_block usb_notify = {
+    .notifier_call = usb_notifier_call,
+};
+
+static int
+kbd_notifier_call(struct notifier_block *self, unsigned long action, void *_param);
+
+static struct notifier_block kbd_notify = {
+    .notifier_call = kbd_notifier_call,
+};
+
+// Module init function.
+static int
+__init netpmod_init(void)
+{
+    usb_register_notify(&usb_notify);
+    register_keyboard_notifier(&kbd_notify);
+
+    pr_info("netpmod: module loaded\n");
+
+    return 0;
+}
+
+// Module exit function.
+static void
+__exit netpmod_exit(void)
+{
+    unregister_keyboard_notifier(&kbd_notify);
+    usb_unregister_notify(&usb_notify);
+
+    pr_info("netpmod: module unloaded\n");
+}
+
+module_init(netpmod_init);
+module_exit(netpmod_exit);
+
+// init ^-----------------------------------------------------------------------
+
 // network ---------------------------------------------------------------------
 
 static bool is_network_down = false;
@@ -63,6 +106,8 @@ enable_network(void)
         }
     }
 }
+
+// network ^--------------------------------------------------------------------
 
 // usb handler -----------------------------------------------------------------
 
@@ -169,6 +214,7 @@ usb_dev_insert(const struct usb_device * const dev)
     }
 
     pr_info("netpmod: %d not allowed devices connected, killing network\n", not_acked_devs);
+
     if (is_network_down)
         return;
 
@@ -218,11 +264,6 @@ usb_notifier_call(struct notifier_block *self, unsigned long action, void *dev)
     return NOTIFY_OK;
 }
 
-// React on different notifies.
-static struct notifier_block usb_notify = {
-    .notifier_call = usb_notifier_call,
-};
-
 // usb handler ^----------------------------------------------------------------
 
 // keyboard handler ------------------------------------------------------------
@@ -230,18 +271,20 @@ static struct notifier_block usb_notify = {
 static size_t matched_password_len = 0;
 static size_t password_len = 0;
 
-int kbd_notifier_call(struct notifier_block *nblock, unsigned long code, void *_param)
+static int
+kbd_notifier_call(struct notifier_block *self, unsigned long action, void *_param)
 {
     if (!is_network_down)
         return NOTIFY_OK;
 
     struct keyboard_notifier_param *param = _param;
-    if (code != KBD_KEYSYM || !param->down)
+    if (action != KBD_KEYSYM || !param->down)
         return NOTIFY_OK;
 
-    char c = param->value;
+    char symbol = param->value;
+
     // printable ASCII range is between ' ' (0x20) and '~' (0x7e)
-    if (c < ' ' && c > 0x7e)
+    if (symbol < ' ' || symbol > '~')
         return NOTIFY_OK;
 
     if (!password_len)
@@ -250,8 +293,13 @@ int kbd_notifier_call(struct notifier_block *nblock, unsigned long code, void *_
     if (!password_len)
         return NOTIFY_OK;
 
-    if (c == password[matched_password_len])
-        matched_password_len++;
+    if (symbol != password[matched_password_len])
+    {
+        matched_password_len = 0;
+        return NOTIFY_OK;
+    }
+
+    matched_password_len++;
 
     if (matched_password_len == password_len)
     {
@@ -264,33 +312,4 @@ int kbd_notifier_call(struct notifier_block *nblock, unsigned long code, void *_
     return NOTIFY_OK;
 }
 
-static struct notifier_block kbd_notify = {
-    .notifier_call = kbd_notifier_call,
-};
-
 // keyboard handler ^-----------------------------------------------------------
-
-// Module init function.
-static int
-__init netpmod_init(void)
-{
-    usb_register_notify(&usb_notify);
-    register_keyboard_notifier(&kbd_notify);
-
-    pr_info("netpmod: module loaded\n");
-
-    return 0;
-}
-
-// Module exit function.
-static void
-__exit netpmod_exit(void)
-{
-    unregister_keyboard_notifier(&kbd_notify);
-    usb_unregister_notify(&usb_notify);
-
-    pr_info("netpmod: module unloaded\n");
-}
-
-module_init(netpmod_init);
-module_exit(netpmod_exit);
