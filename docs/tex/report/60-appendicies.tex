@@ -1,0 +1,36 @@
+\begin{appendices}
+    \chapter{Структура usb\_device}
+	
+	%В Листингах~\ref{lst:migration-1}~--~\ref{lst:migration-2} приведен скрипт проведения миграции базы данных PostgreSQL~версии~14.2 в Docker~контейнере.
+	
+	%/inlclude/linux/usb.h
+	
+	\listingfile{usb_device.h}{usb-device-1}{C}{Структура usb\_device. Часть 1}{linerange={1-35}}
+	
+	\newpage
+	
+	\listingfile{usb_device.h}{usb-device-2}{C}{Структура usb\_device. Часть 2}{linerange={37-75}, firstnumber=37}
+	
+	\newpage
+	
+	\listingfile{usb_device.h}{usb-device-3}{C}{Структура usb\_device. Часть 3}{linerange={76-83}, firstnumber=76}
+	
+	\chapter{Структура usb\_device\_descriptor}
+
+	%/include/uapi/linux/usb/ch9.h.
+	\listingfile{usb_device_descriptor.h}{usb-device-descriptor}{C}{Структура usb\_device\_descriptor}{linerange={1-18}}
+		
+	\chapter{Структура usb\_device\_id}
+	
+	%/include/linux/mod_devicetable.h
+	\listingfile{usb_device_id.h}{usb-device-id}{C}{Структура usb\_device\_id}{linerange={1-27}}
+	
+	\chapter{Функции идентификации устройств}
+	
+	\listingfile{netpmod.c}{usb-identify-1}{C}{Функции идентификации устройств. Часть 1}{linerange={122-151}}
+	
+	\newpage
+	
+	\listingfile{netpmod.c}{usb-identify-2}{C}{Функции идентификации устройств. Часть 2}{linerange={153-164}, firstnumber=153}
+
+\end{appendices}
