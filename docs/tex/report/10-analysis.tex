@@ -62,8 +62,44 @@
 
 \subsection{Уведомители}
 
+Ядро Linux содержит механизм, называемый <<уведомителями>> (\texttt{notifiers}) или <<цепочками уведомлений>> (\texttt{notifiers chains}), который позволяет различным подсистемам подписываться на асинхронные события от других подсистем. 
+
+В настоящее время цепочки уведомлений активно используется в ядре; существуют цепочки для событий \texttt{hotplug} памяти, изменения политики частоты процессора, события \texttt{USB hotplug}, загрузки и выгрузки модулей, перезагрузки системы, изменения сетевых устройств \cite{notifications}.
+
+В листинге \ref{lst:notifier-block} представлена структура \texttt{notifier\_block} \cite{notifierblock}.
+
+\listingfile{notifiers.h}{notifier-block}{C}{Структура \texttt{notifier\_block}}{linerange={1-5}}
+
+Данная структура описана в \texttt{/include/linux/notifier.h}. Она содержит указатель на функцию--обработчик уведомления (\texttt{notifier\_call}), указатель на следующий уведомитель (\texttt{next}) и приоритет уведомителя (\texttt{priority}). Уведомители с более высоким значением приоритета выполняются первее.
+
+В листинге \ref{lst:notifier-fn-t} представлена сигнатура функии \texttt{notifier\_call}.
+
+\listingfile{notifiers.h}{notifier-fn-t}{C}{Структура \texttt{notifier\_fn\_t}}{linerange={7}}
+
+Сигнатура содержит указатель на уведомитель (\texttt{nb}), действие, при котором срабатывает функция (\texttt{action}) и данные, которые передаются от действия в обработчик (\texttt{data}).
+
+Для регистрации уведомителя для USB--портов используются функции регистрации и удаления уведомителя, представленные в листинге \ref{lst:usb-notifiers}.
+
+\listingfile{notifiers.h}{usb-notifiers}{C}{Уведомители на USB--портах}{linerange={10-16}}
+
+Прототипы и константы для действий описаны в файле \texttt{/include/linux/notifier.h}, а реализации функций --- в файле\\ \texttt{/drivers/usb/core/notify.c}. Действие \texttt{USB\_DEVICE\_ADD} означает подключение нового устройства, а \texttt{USB\_DEVICE\_REMOVE} --- удаление, соответственно.
+
+Особенности \texttt{уведомителей}:
+
+\begin{itemize}
+	\item возможность привязки своего обработчика к событию;
+	\item возможность добавления более чем одного обработчика событий;
+	\item возможность использования интерфейса в загружаемом модуле ядра;
+\end{itemize}
+
 \section{USB-устройства в ядре Linux}
 
 \subsection{Структура usb\_device}
 
+Для хранения информации о USB--устройстве в ядре используется структура \texttt{usb\_device}, описанная в \texttt{/inlclude/linux/usb.h}~\cite{usb_device}. Данная структура представлена в листингах~\ref{lst:usb-device-1}--\ref{lst:usb-device-3}.
+
+Каждое USB--устройство должно соответствовать спецификации USB--IF~\cite{usbspec}, одним из требований которой является наличие идентификатора поставщика (\texttt{Vendor ID (VID)}) и идентификатора продукта (\texttt{Product ID (PID)}). Эти данные присутствуют в поле \texttt{descriptor} структуры \texttt{usb\_device}. В листинге~\ref{lst:usb-device-descriptor} представлена структура дескриптора \texttt{usb\_device\_descriptor}, описанная в \texttt{/include/uapi/linux/usb/ch9.h}.
+
 \subsection{Структура usb\_device\_id}
+
+При подключении USB--устройства к компьютеру, оно идентифицируется и идентификационная информация записывается в структуру \texttt{usb\_device\_id}~\cite{usb_device_id}. Данная структура представлена в листинге \ref{lst:usb-device-id}.
