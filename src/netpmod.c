@@ -111,40 +111,32 @@ enable_network(void)
 
 // usb handler -----------------------------------------------------------------
 
-static struct usb_device_id allowed_devs[] = {
-  // {USB_DEVICE(0x0781, 0x5571)},
-};
-
-// Wrapper for usb_device_id with added list_head field to track devices.
 typedef struct int_usb_device
 {
   struct usb_device_id  dev_id;
   struct list_head    list_node;
 } int_usb_device_t;
 
-
-// Declare and init the head node of the linked list.
 LIST_HEAD(connected_devices);
 
-// Match device with device id.
+static struct usb_device_id allowed_devs[] = {
+  {USB_DEVICE(0x0781, 0x5571)},
+};
+
 static bool
 is_dev_matched(const struct usb_device * const dev, const struct usb_device_id *const dev_id)
 {
-  // Check idVendor and idProduct, which are used.
   return dev_id->idVendor == dev->descriptor.idVendor
       && dev_id->idProduct == dev->descriptor.idProduct;
 }
 
-// Match device id with device id.
 static bool
 is_dev_id_matched(const struct usb_device_id * const new_dev_id, const struct usb_device_id * const dev_id)
 {
-  // Check idVendor and idProduct, which are used.
   return dev_id->idVendor == new_dev_id->idVendor
       && dev_id->idProduct == new_dev_id->idProduct;
 }
 
-// Check if device is in allowed devices list.
 static bool
 is_dev_allowed(const struct usb_device_id * const dev)
 {
@@ -158,7 +150,6 @@ is_dev_allowed(const struct usb_device_id * const dev)
   return false;
 }
 
-// Check if changed device is acknowledged.
 static int
 count_not_acked_devs(void)
 {
@@ -172,7 +163,6 @@ count_not_acked_devs(void)
   return count;
 }
 
-//  Add connected device to list of tracked devices.
 static void
 add_int_usb_dev(const struct usb_device * const dev)
 {
@@ -272,42 +262,64 @@ static size_t matched_password_len = 0;
 static size_t password_len = 0;
 
 static int
-kbd_notifier_call(struct notifier_block *self, unsigned long action, void *_param)
+kbd_notifier_verify_action(unsigned long action, void *_param)
 {
   if (!is_network_down)
-    return NOTIFY_OK;
+    return 0;
 
   struct keyboard_notifier_param *param = _param;
   if (action != KBD_KEYSYM || !param->down)
-    return NOTIFY_OK;
+    return 0;
 
-  char symbol = param->value;
+  return 1;
+}
 
-  // printable ASCII range is between ' ' (0x20) and '~' (0x7e)
-  if (symbol < ' ' || symbol > '~')
-    return NOTIFY_OK;
-
+static int
+kbd_notifier_verify_pwd_len(void)
+{
   if (!password_len)
     password_len = strlen(password);
 
   if (!password_len)
-    return NOTIFY_OK;
+    return 0;
+
+  return 1;
+}
+
+static void
+kbd_notifier_process_action(char symbol)
+{
+  if (symbol < ' ' || symbol > '~')
+    return;
 
   if (symbol != password[matched_password_len])
   {
     matched_password_len = 0;
-    return NOTIFY_OK;
+    return;
   }
 
-  matched_password_len++;
-
-  if (matched_password_len == password_len)
+  if (++matched_password_len == password_len)
   {
     pr_info("netpmod: password matched, bringing network back\n");
 
     matched_password_len = 0;
     enable_network();
   }
+}
+
+static int
+kbd_notifier_call(struct notifier_block *self, unsigned long action, void *_param)
+{
+  if (!kbd_notifier_verify_action(action, _param))
+    return NOTIFY_OK;
+
+  if (!kbd_notifier_verify_pwd_len())
+    return NOTIFY_OK;
+
+  struct keyboard_notifier_param *param = _param;
+  char symbol = param->value;
+
+  kbd_notifier_process_action(symbol);
 
   return NOTIFY_OK;
 }
