@@ -98,7 +98,9 @@
 
 Для хранения информации о USB--устройстве в ядре используется структура \texttt{usb\_device}, описанная в \texttt{/inlclude/linux/usb.h}~\cite{usb_device}. Данная структура представлена в листингах~\ref{lst:usb-device-1}--\ref{lst:usb-device-3}.
 
-Каждое USB--устройство должно соответствовать спецификации USB--IF~\cite{usbspec}, одним из требований которой является наличие идентификатора поставщика (\texttt{Vendor ID (VID)}) и идентификатора продукта (\texttt{Product ID (PID)}). Эти данные присутствуют в поле \texttt{descriptor} структуры \texttt{usb\_device}. В листинге~\ref{lst:usb-device-descriptor} представлена структура дескриптора \texttt{usb\_device\_descriptor}, описанная в \texttt{/include/uapi/linux/usb/ch9.h}.
+Каждое USB--устройство должно соответствовать спецификации USB--IF~\cite{usbspec}, одним из требований которой является наличие идентификатора поставщика (\texttt{Vendor ID (VID)}) и идентификатора продукта (\texttt{Product ID (PID)}). 
+
+Эти данные присутствуют в поле \texttt{descriptor} структуры \texttt{usb\_device}. В листинге~\ref{lst:usb-device-descriptor} представлена структура дескриптора \texttt{usb\_device\_descriptor}, описанная в \texttt{/include/uapi/linux/usb/ch9.h}.
 
 \subsection{Структура usb\_device\_id}
 

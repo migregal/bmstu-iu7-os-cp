@@ -101,22 +101,6 @@
 \DeclareFixedFont{\ttb}{T1}{txtt}{bx}{n}{12} % for bold
 \DeclareFixedFont{\ttm}{T1}{txtt}{m}{n}{12}  % for normal
 
-\lstdefinelanguage{docker}{
-  keywords={FROM, RUN, COPY, ADD, ENTRYPOINT, CMD,  ENV, ARG, WORKDIR, EXPOSE, LABEL, USER, VOLUME, STOPSIGNAL, ONBUILD, MAINTAINER},
-  identifierstyle=\color{black},
-  sensitive=false,
-  comment=[l]{\#},
-  morestring=[b]',
-  morestring=[b]"
-}
-\lstdefinelanguage{docker-compose}{
-  keywords={services, version, image, build, extends, file, service, environment, ports, netwroks, container_name, ports, volumes, networks, depends_on, condition, restart, heathcheck, test, interval, timeout, retries, env_file},
-  identifierstyle=\color{black},
-  sensitive=false,
-  comment=[l]{\#},
-  morestring=[b]',
-  morestring=[b]"
-}
 \lstset{
 	basicstyle=\small\ttm,
 	commentstyle=\ttm,
