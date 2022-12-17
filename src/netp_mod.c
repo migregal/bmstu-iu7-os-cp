@@ -4,16 +4,13 @@
 #include <linux/slab.h> // for kmalloc, kfree
 #include <linux/string.h>
 
+#include "netp.h"
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Gregory Mironov");
 MODULE_VERSION("1.0.0");
 
 // params ----------------------------------------------------------------------
-
-static char *net_modules[16] = {"iwlwifi"};
-static int net_modules_n = 1;
-module_param_array(net_modules, charp, &net_modules_n, S_IRUGO);
-MODULE_PARM_DESC(net_modules, "List of modules to manipulate with");
 
 static char *password = {"qwery"};
 module_param(password, charp, 0000);
@@ -63,52 +60,6 @@ module_init(netpmod_init);
 module_exit(netpmod_exit);
 
 // init ^-----------------------------------------------------------------------
-
-// network ---------------------------------------------------------------------
-
-static bool is_network_down = false;
-
-static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
-
-static void
-disable_network(void)
-{
-  int i = 0;
-  for (; i < net_modules_n; i++)
-  {
-    char *argv[] = {"/sbin/modprobe", "-r", net_modules[i], NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-    {
-      pr_warn("netpmod: unable to kill network\n");
-    }
-    else
-    {
-      pr_info("netpmod: network is killed\n");
-      is_network_down = true;
-    }
-  }
-}
-
-static void
-enable_network(void)
-{
-  int i = 0;
-  for (; i < net_modules_n; i++)
-  {
-    char *argv[] = {"/sbin/modprobe", net_modules[i], NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-    {
-      pr_warn("netpmod: unable to bring network back\n");
-    }
-    else
-    {
-      pr_info("netpmod: network is available now\n");
-      is_network_down = false;
-    }
-  }
-}
-
-// network ^--------------------------------------------------------------------
 
 // usb handler -----------------------------------------------------------------
 
@@ -204,7 +155,7 @@ delete_int_usb_dev(const struct usb_device * const dev)
 static void
 usb_dev_insert(const struct usb_device * const dev)
 {
-  pr_info("netpmod: dev connected with PID '%d' and VID '%s' and SERIAL '%d'\n",
+  pr_info("netpmod: dev connected with PID '%d' and VID '%d' and SERIAL '%s'\n",
        dev->descriptor.idProduct, dev->descriptor.idVendor, dev->serial);
 
   add_int_usb_dev(dev);
@@ -218,7 +169,7 @@ usb_dev_insert(const struct usb_device * const dev)
 
   pr_info("netpmod: %d not allowed devs connected, killing network\n", not_acked_devs);
 
-  if (is_network_down)
+  if (is_network_disabled())
     return;
 
   disable_network();
@@ -228,11 +179,11 @@ usb_dev_insert(const struct usb_device * const dev)
 static void
 usb_dev_remove(const struct usb_device * const dev)
 {
-  pr_info("netpmod: dev disconnected with PID '%d' and VID '%d'\n",
-       dev->descriptor.idProduct, dev->descriptor.idVendor);
+  pr_info("netpmod: dev disconnected with PID '%d' and VID '%d' and SERIAL '%s'\n",
+       dev->descriptor.idProduct, dev->descriptor.idVendor, dev->serial);
   delete_int_usb_dev(dev);
 
-  if (!is_network_down)
+  if (!is_network_disabled())
     return;
 
   int not_acked_devs = count_not_acked_devs();
@@ -277,7 +228,7 @@ static size_t password_len = 0;
 static int
 kbd_notifier_verify_action(unsigned long action, void *_param)
 {
-  if (!is_network_down)
+  if (!is_network_disabled())
     return 0;
 
   struct keyboard_notifier_param *param = _param;

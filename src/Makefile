@@ -1,5 +1,6 @@
 ifneq ($(KERNELRELEASE),)
 	obj-m := netpmod.o
+	netpmod-objs := netp.o netp_mod.o
 else
 
 KDIR = /lib/modules/$(shell uname -r)/build
