@@ -2,6 +2,7 @@
 #include <linux/usb.h>
 #include <linux/keyboard.h>
 #include <linux/slab.h> // for kmalloc, kfree
+#include <linux/string.h>
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Gregory Mironov");
@@ -111,36 +112,47 @@ enable_network(void)
 
 // usb handler -----------------------------------------------------------------
 
+typedef struct int_usb_device_id {
+  struct usb_device_id id;
+  char                 *serial;
+} int_usb_device_id_t;
+
+#define INT_USB_DEVICE(v, p, s)\
+  .id={USB_DEVICE(v, p)},\
+  .serial=(s)
+
 typedef struct int_usb_device
 {
-  struct usb_device_id  dev_id;
+  int_usb_device_id_t dev_id;
   struct list_head    list_node;
 } int_usb_device_t;
 
 LIST_HEAD(connected_devices);
 
-static struct usb_device_id allowed_devs[] = {
-  {USB_DEVICE(0x0781, 0x5571)},
+static int_usb_device_id_t allowed_devs[] = {
+  {INT_USB_DEVICE(0x0781, 0x5571, "03021524050621080032")},
 };
 
 static bool
-is_dev_matched(const struct usb_device * const dev, const struct usb_device_id *const dev_id)
+is_dev_matched(const struct usb_device * const dev, const int_usb_device_id_t *const dev_id)
 {
-  return dev_id->idVendor == dev->descriptor.idVendor
-      && dev_id->idProduct == dev->descriptor.idProduct;
+  return dev_id->id.idVendor == dev->descriptor.idVendor
+      && dev_id->id.idProduct == dev->descriptor.idProduct
+      && !strcmp(dev_id->serial, dev->serial);
 }
 
 static bool
-is_dev_id_matched(const struct usb_device_id * const new_dev_id, const struct usb_device_id * const dev_id)
+is_dev_id_matched(const int_usb_device_id_t * const new_dev_id, const int_usb_device_id_t * const dev_id)
 {
-  return dev_id->idVendor == new_dev_id->idVendor
-      && dev_id->idProduct == new_dev_id->idProduct;
+  return dev_id->id.idVendor == new_dev_id->id.idVendor
+      && dev_id->id.idProduct == new_dev_id->id.idProduct
+      && !strcmp(dev_id->serial, new_dev_id->serial);
 }
 
 static bool
-is_dev_allowed(const struct usb_device_id * const dev)
+is_dev_allowed(const int_usb_device_id_t * const dev)
 {
-  unsigned long allowed_devs_len = sizeof(allowed_devs) / sizeof(struct usb_device_id);
+  unsigned long allowed_devs_len = sizeof(allowed_devs) / sizeof(int_usb_device_id_t);
 
   int i = 0;
   for (; i < allowed_devs_len; i++)
@@ -167,8 +179,8 @@ static void
 add_int_usb_dev(const struct usb_device * const dev)
 {
   int_usb_device_t *new_usb_device = (int_usb_device_t *)kmalloc(sizeof(int_usb_device_t), GFP_KERNEL);
-  struct usb_device_id new_id = {
-    USB_DEVICE(dev->descriptor.idVendor, dev->descriptor.idProduct),
+  int_usb_device_id_t new_id = {
+    INT_USB_DEVICE(dev->descriptor.idVendor, dev->descriptor.idProduct, dev->serial),
   };
 
   new_usb_device->dev_id = new_id;
@@ -192,8 +204,9 @@ delete_int_usb_dev(const struct usb_device * const dev)
 static void
 usb_dev_insert(const struct usb_device * const dev)
 {
-  pr_info("netpmod: dev connected with PID '%d' and VID '%d'\n",
-       dev->descriptor.idProduct, dev->descriptor.idVendor);
+  pr_info("netpmod: dev connected with PID '%d' and VID '%s' and SERIAL '%d'\n",
+       dev->descriptor.idProduct, dev->descriptor.idVendor, dev->serial);
+
   add_int_usb_dev(dev);
 
   int not_acked_devs = count_not_acked_devs();
