@@ -2,25 +2,23 @@
 #include <linux/usb.h>
 #include <linux/keyboard.h>
 #include <linux/slab.h> // for kmalloc, kfree
+#include <linux/string.h>
+
+#include "netp.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Gregory Mironov");
 MODULE_VERSION("1.0.0");
 
-// params ----------------------------------------------------------------------
-
-static char *net_modules[16] = {"iwlwifi"};
-static int net_modules_n = 1;
-module_param_array(net_modules, charp, &net_modules_n, S_IRUGO);
-MODULE_PARM_DESC(net_modules, "List of modules to manipulate with");
+// params -----------------------------------
 
 static char *password = {"qwery"};
 module_param(password, charp, 0000);
 MODULE_PARM_DESC(password, "Password to reenable network manually");
 
-// params ^---------------------------------------------------------------------
+// params ^----------------------------------
 
-// init ------------------------------------------------------------------------
+// init -------------------------------------
 
 static int
 usb_notifier_call(struct notifier_block *self, unsigned long action, void *dev);
@@ -61,87 +59,51 @@ __exit netpmod_exit(void)
 module_init(netpmod_init);
 module_exit(netpmod_exit);
 
-// init ^-----------------------------------------------------------------------
+// init ^------------------------------------
 
-// network ---------------------------------------------------------------------
+// usb handler ------------------------------
 
-static bool is_network_down = false;
+typedef struct int_usb_device_id {
+  struct usb_device_id id;
+  char                 *serial;
+} int_usb_device_id_t;
 
-static char *envp[] = {"HOME=/", "TERM=linux", "PATH=/sbin:/bin:/usr/sbin:/usr/bin", NULL};
-
-static void
-disable_network(void)
-{
-  int i = 0;
-  for (; i < net_modules_n; i++)
-  {
-    char *argv[] = {"/sbin/modprobe", "-r", net_modules[i], NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-    {
-      pr_warn("netpmod: unable to kill network\n");
-    }
-    else
-    {
-      pr_info("netpmod: network is killed\n");
-      is_network_down = true;
-    }
-  }
-}
-
-static void
-enable_network(void)
-{
-  int i = 0;
-  for (; i < net_modules_n; i++)
-  {
-    char *argv[] = {"/sbin/modprobe", net_modules[i], NULL};
-    if (call_usermodehelper(argv[0], argv, envp, UMH_WAIT_PROC > 0))
-    {
-      pr_warn("netpmod: unable to bring network back\n");
-    }
-    else
-    {
-      pr_info("netpmod: network is available now\n");
-      is_network_down = false;
-    }
-  }
-}
-
-// network ^--------------------------------------------------------------------
-
-// usb handler -----------------------------------------------------------------
+#define INT_USB_DEVICE(v, p, s)\
+  .id={USB_DEVICE(v, p)},\
+  .serial=(s)
 
 typedef struct int_usb_device
 {
-  struct usb_device_id  dev_id;
+  int_usb_device_id_t dev_id;
   struct list_head    list_node;
 } int_usb_device_t;
 
 LIST_HEAD(connected_devices);
 
-static struct usb_device_id allowed_devs[] = {
-  {USB_DEVICE(0x0781, 0x5571)},
+static int_usb_device_id_t allowed_devs[] = {
+  {INT_USB_DEVICE(0x0781, 0x5571, "03021524050621080032")},
 };
 
 static bool
-is_dev_matched(const struct usb_device * const dev, const struct usb_device_id *const dev_id)
+is_dev_matched(const struct usb_device * const dev, const int_usb_device_id_t *const dev_id)
 {
-  return dev_id->idVendor == dev->descriptor.idVendor
-      && dev_id->idProduct == dev->descriptor.idProduct;
+  return dev_id->id.idVendor == dev->descriptor.idVendor
+      && dev_id->id.idProduct == dev->descriptor.idProduct
+      && !strcmp(dev_id->serial, dev->serial);
 }
 
 static bool
-is_dev_id_matched(const struct usb_device_id * const new_dev_id, const struct usb_device_id * const dev_id)
+is_dev_id_matched(const int_usb_device_id_t * const new_dev_id, const int_usb_device_id_t * const dev_id)
 {
-  // Check idVendor and idProduct, which are used.
-  return dev_id->idVendor == new_dev_id->idVendor
-      && dev_id->idProduct == new_dev_id->idProduct;
+  return dev_id->id.idVendor == new_dev_id->id.idVendor
+      && dev_id->id.idProduct == new_dev_id->id.idProduct
+      && !strcmp(dev_id->serial, new_dev_id->serial);
 }
 
 static bool
-is_dev_allowed(const struct usb_device_id * const dev)
+is_dev_allowed(const int_usb_device_id_t * const dev)
 {
-  unsigned long allowed_devs_len = sizeof(allowed_devs) / sizeof(struct usb_device_id);
+  unsigned long allowed_devs_len = sizeof(allowed_devs) / sizeof(int_usb_device_id_t);
 
   int i = 0;
   for (; i < allowed_devs_len; i++)
@@ -168,8 +130,8 @@ static void
 add_int_usb_dev(const struct usb_device * const dev)
 {
   int_usb_device_t *new_usb_device = (int_usb_device_t *)kmalloc(sizeof(int_usb_device_t), GFP_KERNEL);
-  struct usb_device_id new_id = {
-    USB_DEVICE(dev->descriptor.idVendor, dev->descriptor.idProduct),
+  int_usb_device_id_t new_id = {
+    INT_USB_DEVICE(dev->descriptor.idVendor, dev->descriptor.idProduct, dev->serial),
   };
 
   new_usb_device->dev_id = new_id;
@@ -193,8 +155,9 @@ delete_int_usb_dev(const struct usb_device * const dev)
 static void
 usb_dev_insert(const struct usb_device * const dev)
 {
-  pr_info("netpmod: dev connected with PID '%d' and VID '%d'\n",
-       dev->descriptor.idProduct, dev->descriptor.idVendor);
+  pr_info("netpmod: dev connected with PID '%d' and VID '%d' and SERIAL '%s'\n",
+       dev->descriptor.idProduct, dev->descriptor.idVendor, dev->serial);
+
   add_int_usb_dev(dev);
 
   int not_acked_devs = count_not_acked_devs();
@@ -206,7 +169,7 @@ usb_dev_insert(const struct usb_device * const dev)
 
   pr_info("netpmod: %d not allowed devs connected, killing network\n", not_acked_devs);
 
-  if (is_network_down)
+  if (is_network_disabled())
     return;
 
   disable_network();
@@ -216,11 +179,11 @@ usb_dev_insert(const struct usb_device * const dev)
 static void
 usb_dev_remove(const struct usb_device * const dev)
 {
-  pr_info("netpmod: dev disconnected with PID '%d' and VID '%d'\n",
-       dev->descriptor.idProduct, dev->descriptor.idVendor);
+  pr_info("netpmod: dev disconnected with PID '%d' and VID '%d' and SERIAL '%s'\n",
+       dev->descriptor.idProduct, dev->descriptor.idVendor, dev->serial);
   delete_int_usb_dev(dev);
 
-  if (!is_network_down)
+  if (!is_network_disabled())
     return;
 
   int not_acked_devs = count_not_acked_devs();
@@ -255,9 +218,9 @@ usb_notifier_call(struct notifier_block *self, unsigned long action, void *dev)
   return NOTIFY_OK;
 }
 
-// usb handler ^----------------------------------------------------------------
+// usb handler ^-----------------------------
 
-// keyboard handler ------------------------------------------------------------
+// keyboard handler -------------------------
 
 static size_t matched_password_len = 0;
 static size_t password_len = 0;
@@ -265,7 +228,7 @@ static size_t password_len = 0;
 static int
 kbd_notifier_verify_action(unsigned long action, void *_param)
 {
-  if (!is_network_down)
+  if (!is_network_disabled())
     return 0;
 
   struct keyboard_notifier_param *param = _param;
@@ -325,4 +288,4 @@ kbd_notifier_call(struct notifier_block *self, unsigned long action, void *_para
   return NOTIFY_OK;
 }
 
-// keyboard handler ^-----------------------------------------------------------
+// keyboard handler ^------------------------

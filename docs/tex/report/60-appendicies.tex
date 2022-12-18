@@ -1,37 +1,43 @@
-\begin{appendices}
-    \chapter{Структура usbmon\_packet}
+\begin{appendices}   
+    \chapter{Работа со списком устройств}
 
-	\listingfile{usbmon_packet.h}{usbmon-packet}{C}{Структура usbmon\_packet}{}
+    \listingfile{netp_mod.c}{int-usb-2}{C}{Функции для работы со списком устройств}{linerange={166-189}}
 
-	\newpage
+	\chapter{Идентификация устройств}
 
-    \chapter{Структура usb\_device}
-	%В Листингах~\ref{lst:migration-1}~--~\ref{lst:migration-2} приведен скрипт проведения миграции базы данных PostgreSQL~версии~14.2 в Docker~контейнере.
-
-	%/inlclude/linux/usb.h
-
-	\listingfile{usb_device.h}{usb-device-1}{C}{Структура usb\_device. Часть 1}{linerange={1-35}}
+	\listingfile{netp_mod.c}{usb-identify-1}{C}{Функции идентификации устройств. Часть 1}{linerange={122-151}}
 
 	\newpage
 
-	\listingfile{usb_device.h}{usb-device-2}{C}{Структура usb\_device. Часть 2}{linerange={37-75}, firstnumber=37}
+	\listingfile{netp_mod.c}{usb-identify-2}{C}{Функции идентификации устройств. Часть 2}{linerange={153-164}, firstnumber=153}
+
+    \chapter{Обработчики USB--устройств}
+
+    \listingfile{netp_mod.c}{usb-insert}{C}{Обработчик подключения USB--устройства}{linerange={191-212}}
 
 	\newpage
 
-	\listingfile{usb_device.h}{usb-device-3}{C}{Структура usb\_device. Часть 3}{linerange={76-83}, firstnumber=76}
+    \listingfile{netp_mod.c}{usb-remove}{C}{Обработчик удаления USB--устройства}{linerange={214-235}}
 
-	\chapter{Структура usb\_device\_descriptor}
+    \chapter{Обработчик клавиатуры}
 
-	%/include/uapi/linux/usb/ch9.h.
-	\listingfile{usb_device_descriptor.h}{usb-device-descriptor}{C}{Структура usb\_device\_descriptor}{linerange={1-18}}
+    \listingfile{netp_mod.c}{kbd-data}{C}{Объявление используемых значений}{linerange={262-264}}
 
-	\chapter{Структура usb\_device\_id}
+    \listingfile{netp_mod.c}{kbd-verify-action}{C}{Функция валидации события}{linerange={265-276}}
 
-	%/include/linux/mod_devicetable.h
-	\listingfile{usb_device_id.h}{usb-device-id}{C}{Структура usb\_device\_id}{linerange={1-27}}
+    \listingfile{netp_mod.c}{kbd-verify-pwd-len}{C}{Функция валидации пароля}{linerange={278-288}}
 
-    \chapter{usermode-helper API}
 
-    \listingfile{umod_helper.h}{umh}{C}{\texttt{usermode-helper API}}{}
-     
+    \clearpage
+
+    \listingfile{netp_mod.c}{kbd-action}{C}{Функция обработки символа}{linerange={290-309}}
+
+    \chapter{Исходный код загружаемого модуля}
+    
+    \listingfile{netp.h}{src}{C}{Исходный код netp.h}{}
+    
+	\listingfile{netp.c}{src}{C}{Исходный код netp.c}{}
+    
+    \listingfile{netp_mod.c}{src}{C}{Исходный код netp\_mod.c}{}
+    	
 \end{appendices}

@@ -1,6 +1,6 @@
 bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
 [  498.489270] netpmod: module loaded
-[  504.583702] netpmod: device connected with PID '21873' and VID '1921'
+[  504.583702] netpmod: device connected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
 [  504.583706] netpmod: 1 not allowed devices connected, killing network
 [  504.583974] netpmod: network is killed
 bmstu-iu7-os-cp/src [dev] » ping -c 3 google.com
@@ -10,7 +10,7 @@ ping: google.com: Temporary failure in name resolution
 
 bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
 ...
-[  589.893378] netpmod: device disconnected with PID '21873' and VID '1921'
+[  589.893378] netpmod: device disconnected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
 [  589.893383] netpmod: all not allowed devices are disconnected, bringing network back
 [  589.893782] netpmod: network is available now
 bmstu-iu7-os-cp/src [dev] $ ping -c 3 google.com
@@ -28,7 +28,7 @@ rtt min/avg/max/mdev = 18.905/19.225/19.463/0.235 ms
 bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
 ...
 [  734.312735] netpmod: module loaded
-[  739.479982] netpmod: device connected with PID '21873' and VID '1921'
+[  739.479982] netpmod: device connected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
 [  739.479987] netpmod: allowed device connected, skipping network killing
 bmstu-iu7-os-cp/src [dev] » ping -c 3 google.com
 PING google.com(lu-in-x71.1e100.net (2a00:1450:4010:c0e::71)) 56 data bytes

@@ -42,6 +42,8 @@
 
 В листинге \ref{lst:usbmon-packet} представлена структура ответа, полученного после события, случившегося на USB--устройстве (например, подключение к компьютеру).
 
+\listingfile{usbmon_packet.h}{usbmon-packet}{C}{Структура usbmon\_packet}{}
+
 \subsection{udevadm}
 
 \texttt{udevadm} \cite{udevadm} --- инструмент для управления устройствами \texttt{udev}. Структура \texttt{udev} описана в библиотеке \texttt{libudev} \cite{libudev}, которая не является системной библиотекой Linux. В данной библиотеке представлен программный интерфейс для мониторинга и взаимодействия с локальными устройствами.
@@ -96,15 +98,21 @@
 
 \subsection{Структура usb\_device}
 
-Для хранения информации о USB--устройстве в ядре используется структура \texttt{usb\_device}, описанная в \texttt{/inlclude/linux/usb.h}~\cite{usb_device}. Данная структура представлена в листингах~\ref{lst:usb-device-1}--\ref{lst:usb-device-3}.
+Для хранения информации о USB--устройстве в ядре используется структура \texttt{usb\_device}, описанная в \texttt{/inlclude/linux/usb.h}~\cite{usb_device}. Данная структура представлена в листинге~\ref{lst:usb-device}.
+
+\listingfile{usb_device.h}{usb-device}{C}{Структура usb\_device}{}
 
 Каждое USB--устройство должно соответствовать спецификации USB--IF~\cite{usbspec}, одним из требований которой является наличие идентификатора поставщика (\texttt{Vendor ID (VID)}) и идентификатора продукта (\texttt{Product ID (PID)}). 
 
-Эти данные присутствуют в поле \texttt{descriptor} структуры \texttt{usb\_device}. В листинге~\ref{lst:usb-device-descriptor} представлена структура дескриптора \texttt{usb\_device\_descriptor}, описанная в \texttt{/include/uapi/linux/usb/ch9.h}.
+Эти данные присутствуют в поле \texttt{descriptor} структуры \texttt{usb\_device}. Структура дескриптора \texttt{usb\_device\_descriptor}, описанная в \texttt{/include/uapi/linux/usb/ch9.h}, представлена в листинге~\ref{lst:usb-device-descriptor}.
+
+\listingfile{usb_device_descriptor.h}{usb-device-descriptor}{C}{Структура usb\_device\_descriptor}{}
 
 \subsection{Структура usb\_device\_id}
 
 При подключении USB--устройства к компьютеру, оно идентифицируется и идентификационная информация записывается в структуру \texttt{usb\_device\_id}~\cite{usb_device_id}. Данная структура представлена в листинге \ref{lst:usb-device-id}.
+
+%\listingfile{usb_device_id.h}{usb-device-id}{C}{Структура usb\_device\_id}{}
 
 \section{Особенности разработки загружаемых модулей ядра Linux}
 
@@ -124,6 +132,8 @@
 
 В листинге \ref{lst:umh} представлена структура процесса, использующегося в \texttt{usermode-helper API} и сигнатура функции вызова~\cite{umh}.
 
+\listingfile{umod_helper.h}{umh}{C}{\texttt{usermode-helper API}}{}
+    
 \section*{Выводы}
 
 Были рассмотрены методы обработки событий, возникающих при взаимодействии с USB--устройствами. Среди рассмотренных методов был выбран механизм уведомителей, так как он позволяет привязать свой обработчик события, а также реализован на уровне ядра Linux. Были рассмотрены структуры и функции ядра для работы с уведомителями, а также особенности разработки загружаемых модулей ядра.
