@@ -2,14 +2,14 @@
 
 #include "netp.h"
 
-// params ----------------------------------------------------------------------
+// params -----------------------------------
 
 static char *net_modules[16] = {"iwlwifi"};
 static int net_modules_n = 1;
 module_param_array(net_modules, charp, &net_modules_n, S_IRUGO);
 MODULE_PARM_DESC(net_modules, "List of modules to manipulate with");
 
-// params ^---------------------------------------------------------------------
+// params ^----------------------------------
 
 static bool is_network_down = false;
 
