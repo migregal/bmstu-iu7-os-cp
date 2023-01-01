@@ -1,0 +1,41 @@
+bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
+[  498.489270] netpmod: module loaded
+[  504.583702] netpmod: device connected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
+[  504.583706] netpmod: 1 not allowed devices connected, killing network
+[  504.583974] netpmod: network is killed
+bmstu-iu7-os-cp/src [dev] » ping -c 3 google.com
+ping: google.com: Temporary failure in name resolution
+
+================================================================================
+
+bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
+...
+[  589.893378] netpmod: device disconnected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
+[  589.893383] netpmod: all not allowed devices are disconnected, bringing network back
+[  589.893782] netpmod: network is available now
+bmstu-iu7-os-cp/src [dev] $ ping -c 3 google.com
+PING google.com (108.177.14.102) 56(84) bytes of data.
+64 bytes from lt-in-f102.1e100.net (108.177.14.102): icmp_seq=1 ttl=59 time=18.9 ms
+64 bytes from lt-in-f102.1e100.net (108.177.14.102): icmp_seq=2 ttl=59 time=19.3 ms
+64 bytes from lt-in-f102.1e100.net (108.177.14.102): icmp_seq=3 ttl=59 time=19.5 ms
+
+--- google.com ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 18.905/19.225/19.463/0.235 ms
+
+================================================================================
+
+bmstu-iu7-os-cp/src [dev] $ sudo dmesg | grep 'netpmod:'
+...
+[  734.312735] netpmod: module loaded
+[  739.479982] netpmod: device connected with PID '21873' and VID '1921' and SERIAL '03021524050621080032'
+[  739.479987] netpmod: allowed device connected, skipping network killing
+bmstu-iu7-os-cp/src [dev] » ping -c 3 google.com
+PING google.com(lu-in-x71.1e100.net (2a00:1450:4010:c0e::71)) 56 data bytes
+64 bytes from lu-in-f113.1e100.net (2a00:1450:4010:c0e::71): icmp_seq=1 ttl=60 time=19.1 ms
+64 bytes from lu-in-f113.1e100.net (2a00:1450:4010:c0e::71): icmp_seq=2 ttl=60 time=21.6 ms
+64 bytes from lu-in-x71.1e100.net (2a00:1450:4010:c0e::71): icmp_seq=3 ttl=60 time=21.7 ms
+
+--- google.com ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2004ms
+rtt min/avg/max/mdev = 19.098/20.805/21.688/1.207 ms
